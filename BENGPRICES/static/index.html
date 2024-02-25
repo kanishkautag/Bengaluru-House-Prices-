@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Price Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            max-width: 400px;
+            margin: 20px 0;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Real Estate Price Predictor</h1>
+
+    <form id="priceForm">
+        <label for="location">Search Location:</label>
+        <input type="text" id="location" name="location" placeholder="Type to search..." required>
+
+        <label for="sqft">Square Feet:</label>
+        <input type="number" id="sqft" name="sqft" required>
+
+        <label for="bath">Bathrooms:</label>
+        <input type="number" id="bath" name="bath" required>
+
+        <label for="bhk">BHK:</label>
+        <input type="number" id="bhk" name="bhk" required>
+
+        <button type="button" onclick="predictPrice()">Predict Price</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2 for the location search
+            $('#location').select2({
+                placeholder: 'Type to search...',
+                allowClear: true,
+                ajax: {
+                    url: '/locations',
+                    dataType: 'json',
+                    delay: 250,
+                    processResults: function(data) {
+                        return {
+                            results: data.locations.map(function(location) {
+                                return {
+                                    id: location,
+                                    text: location
+                                };
+                            })
+                        };
+                    },
+                    cache: true
+                }
+            });
+        });
+
+        function predictPrice() {
+            // Get input values
+            const location = $('#location').val();
+            const sqft = $('#sqft').val();
+            const bath = $('#bath').val();
+            const bhk = $('#bhk').val();
+
+            // Make an API call to your FastAPI endpoint
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ location, sqft, bath, bhk }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display the result
+                $('#result').html('<h2>Predicted Price:</h2><p>' + data.predicted_price + '</p>');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                $('#result').html('<p>Error predicting price. Please try again.</p>');
+            });
+        }
+    </script>
+
+</body>
+</html>
