@@ -2,122 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real Estate Price Predictor</title>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-
-        h1 {
-            color: #333;
-        }
-
-        form {
-            max-width: 400px;
-            margin: 20px 0;
-        }
-
-        input, button {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        #result {
-            margin-top: 20px;
-        }
-    </style>
+    <title>Bengaluru House Price Prediction</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-
-    <h1>Real Estate Price Predictor</h1>
-
-    <form id="priceForm">
-        <label for="location">Search Location:</label>
-        <input type="text" id="location" name="location" placeholder="Type to search..." required>
-
-        <label for="sqft">Square Feet:</label>
-        <input type="number" id="sqft" name="sqft" required>
-
-        <label for="bath">Bathrooms:</label>
-        <input type="number" id="bath" name="bath" required>
-
-        <label for="bhk">BHK:</label>
-        <input type="number" id="bhk" name="bhk" required>
-
-        <button type="button" onclick="predictPrice()">Predict Price</button>
-    </form>
-
-    <div id="result"></div>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6">
+        <h1 class="text-2xl font-bold mb-6 text-center">Bengaluru House Price Prediction</h1>
+        <form id="predictionForm" class="space-y-4">
+            <div>
+                <label for="location" class="block text-sm font-medium text-gray-700">Location</label>
+                <select id="location" name="location" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="">Select a location</option>
+                </select>
+            </div>
+            <div>
+                <label for="sqft" class="block text-sm font-medium text-gray-700">Total Square Feet</label>
+                <input type="number" id="sqft" name="sqft" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="bath" class="block text-sm font-medium text-gray-700">Number of Bathrooms</label>
+                <input type="number" id="bath" name="bath" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="bhk" class="block text-sm font-medium text-gray-700">Number of Bedrooms (BHK)</label>
+                <input type="number" id="bhk" name="bhk" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Predict Price
+                </button>
+            </div>
+        </form>
+        <div id="result" class="mt-4 text-center font-bold text-lg"></div>
+    </div>
 
     <script>
-        $(document).ready(function() {
-            // Initialize Select2 for the location search
-            $('#location').select2({
-                placeholder: 'Type to search...',
-                allowClear: true,
-                ajax: {
-                    url: '/locations',
-                    dataType: 'json',
-                    delay: 250,
-                    processResults: function(data) {
-                        return {
-                            results: data.locations.map(function(location) {
-                                return {
-                                    id: location,
-                                    text: location
-                                };
-                            })
-                        };
-                    },
-                    cache: true
-                }
+        document.addEventListener('DOMContentLoaded', function() {
+            const locationSelect = document.getElementById('location');
+            const predictionForm = document.getElementById('predictionForm');
+            const resultDiv = document.getElementById('result');
+
+            // Fetch locations and populate the dropdown
+            axios.get('/locations')
+                .then(function (response) {
+                    const locations = response.data.locations;
+                    locations.forEach(function(location) {
+                        if (location !== 'total_sqft' && location !== 'bath' && location !== 'bhk') {
+                            const option = document.createElement('option');
+                            option.value = location;
+                            option.textContent = location;
+                            locationSelect.appendChild(option);
+                        }
+                    });
+                })
+                .catch(function (error) {
+                    console.error('Error fetching locations:', error);
+                });
+
+            // Handle form submission
+            predictionForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    location: document.getElementById('location').value,
+                    sqft: parseFloat(document.getElementById('sqft').value),
+                    bath: parseInt(document.getElementById('bath').value),
+                    bhk: parseInt(document.getElementById('bhk').value)
+                };
+
+                axios.post('/predict', formData)
+                    .then(function (response) {
+                        const price = response.data.predicted_price.toFixed(2);
+                        resultDiv.textContent = `Predicted Price: ₹${price}`;
+                    })
+                    .catch(function (error) {
+                        console.error('Error predicting price:', error);
+                        resultDiv.textContent = 'Error predicting price. Please try again.';
+                    });
             });
         });
-
-        function predictPrice() {
-            // Get input values
-            const location = $('#location').val();
-            const sqft = $('#sqft').val();
-            const bath = $('#bath').val();
-            const bhk = $('#bhk').val();
-
-            // Make an API call to your FastAPI endpoint
-            fetch('/predict', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ location, sqft, bath, bhk }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Display the result
-                $('#result').html('<h2>Predicted Price:</h2><p>' + data.predicted_price + '</p>');
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                $('#result').html('<p>Error predicting price. Please try again.</p>');
-            });
-        }
     </script>
-
 </body>
 </html>
