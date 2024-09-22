@@ -1,63 +1,93 @@
-import uvicorn
-from fastapi import FastAPI, Query
-from pydantic import BaseModel
-import numpy as np
-import pickle
-import json
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bengaluru House Price Prediction</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6">
+        <h1 class="text-2xl font-bold mb-6 text-center">Bengaluru House Price Prediction</h1>
+        <form id="predictionForm" class="space-y-4">
+            <div>
+                <label for="location" class="block text-sm font-medium text-gray-700">Location</label>
+                <select id="location" name="location" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="">Select a location</option>
+                </select>
+            </div>
+            <div>
+                <label for="sqft" class="block text-sm font-medium text-gray-700">Total Square Feet</label>
+                <input type="number" id="sqft" name="sqft" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="bath" class="block text-sm font-medium text-gray-700">Number of Bathrooms</label>
+                <input type="number" id="bath" name="bath" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="bhk" class="block text-sm font-medium text-gray-700">Number of Bedrooms (BHK)</label>
+                <input type="number" id="bhk" name="bhk" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Predict Price
+                </button>
+            </div>
+        </form>
+        <div id="result" class="mt-4 text-center font-bold text-lg"></div>
+    </div>
 
-app = FastAPI()
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const locationSelect = document.getElementById('location');
+            const predictionForm = document.getElementById('predictionForm');
+            const resultDiv = document.getElementById('result');
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+            // Fetch locations and populate the dropdown
+            axios.get('/locations')
+                .then(function (response) {
+                    const locations = response.data.locations;
+                    locations.forEach(function(location) {
+                        if (location !== 'total_sqft' && location !== 'bath' && location !== 'bhk') {
+                            const option = document.createElement('option');
+                            option.value = location;
+                            option.textContent = location;
+                            locationSelect.appendChild(option);
+                        }
+                    });
+                })
+                .catch(function (error) {
+                    console.error('Error fetching locations:', error);
+                    resultDiv.textContent = 'Error fetching locations. Please refresh the page.';
+                });
 
-# Load the model and columns
-with open("banglore_home_prices_model.pickle", "rb") as f:
-    model = pickle.load(f)
+            // Handle form submission
+            predictionForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    location: document.getElementById('location').value,
+                    sqft: parseFloat(document.getElementById('sqft').value),
+                    bath: parseInt(document.getElementById('bath').value),
+                    bhk: parseInt(document.getElementById('bhk').value)
+                };
 
-with open('columns.json', 'r') as json_file:
-    columns_data = json.load(json_file)
-    all_columns = columns_data.get("data_columns", [])
-
-
-def get_locations(query: str = Query(None)):
-    if query:
-        filtered_locations = [loc for loc in all_columns if query.lower() in loc.lower()]
-        return JSONResponse(content={"locations": filtered_locations})
-    else:
-        return {"locations": all_columns}
-
-
-# Define the input data model using Pydantic
-class PriceInput(BaseModel):
-    location: str
-    sqft: float
-    bath: int
-    bhk: int
-
-@app.get("/locations")
-def fetch_locations(query: str = Query(None)):
-    return get_locations(query)
-
-
-@app.post("/predict")
-def predict_price(item: PriceInput):
-    # Check if the location is in the columns
-    if item.location not in all_columns:
-        return {"error": "Invalid location"}
-
-    # Convert location to dummy variables
-    loc_index = all_columns.index(item.location)
-    input_features = np.zeros(len(all_columns))
-    input_features[0] = item.sqft
-    input_features[1] = item.bath
-    input_features[2] = item.bhk
-    input_features[loc_index] = 1
-
-    # Make the prediction
-    predicted_price = model.predict([input_features])[0]
-
-    return {"predicted_price": predicted_price}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+                axios.post('/predict_price', formData)
+                    .then(function (response) {
+                        if (response.data.error) {
+                            resultDiv.textContent = `Error: ${response.data.error}`;
+                        } else {
+                            const price = response.data.predicted_price.toFixed(2);
+                            resultDiv.textContent = `Predicted Price: \u20B9${price} lakhs`;
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error predicting price:', error);
+                        resultDiv.textContent = 'Error predicting price. Please try again.';
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
