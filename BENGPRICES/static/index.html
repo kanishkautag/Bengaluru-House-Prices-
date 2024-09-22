@@ -59,6 +59,7 @@
                 })
                 .catch(function (error) {
                     console.error('Error fetching locations:', error);
+                    resultDiv.textContent = 'Error fetching locations. Please refresh the page.';
                 });
 
             // Handle form submission
@@ -72,10 +73,14 @@
                     bhk: parseInt(document.getElementById('bhk').value)
                 };
 
-                axios.post('/predict', formData)
+                axios.post('/predict_price', formData)
                     .then(function (response) {
-                        const price = response.data.predicted_price.toFixed(2);
-                        resultDiv.textContent = `Predicted Price: ₹${price}`;
+                        if (response.data.error) {
+                            resultDiv.textContent = `Error: ${response.data.error}`;
+                        } else {
+                            const price = response.data.predicted_price.toFixed(2);
+                            resultDiv.textContent = `Predicted Price: \u20B9${price} lakhs`;
+                        }
                     })
                     .catch(function (error) {
                         console.error('Error predicting price:', error);
